@@ -178,12 +178,30 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 
-var pageLoading = document.querySelector("#zyyo-loading");
-window.addEventListener('load', function() {
-    setTimeout(function () {
-        pageLoading.style.opacity = '0';
-    }, 100);
-});
+// 首屏加载层：加载完成后淡出并从 DOM 移除
+(function () {
+    var loader = document.getElementById('page-loader');
+    if (!loader) return;
+
+    var hidden = false;
+    function hideLoader() {
+        if (hidden) return;
+        hidden = true;
+        loader.classList.add('is-hidden');
+        setTimeout(function () {
+            if (loader.parentNode) loader.parentNode.removeChild(loader);
+        }, 400);
+    }
+
+    if (document.readyState === 'complete') {
+        hideLoader();
+    } else {
+        window.addEventListener('load', hideLoader);
+    }
+
+    // 兜底：某个资源卡住时也不至于一直遮着页面
+    setTimeout(hideLoader, 3000);
+})();
 
 // 底部年份自动取当前年份
 (function () {

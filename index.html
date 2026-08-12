@@ -41,13 +41,49 @@
     display: none;
 }
 </style>
+	<!-- 首屏加载层：关键样式内联，避免等 style.css 到达才成形 -->
+	<style>
+#page-loader {
+    position: fixed;
+    inset: 0;
+    z-index: 999999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--main_bg_color, #ffffff);
+    background-size: cover;
+    background-position: center;
+    pointer-events: none;
+    opacity: 1;
+    transition: opacity .35s ease;
+}
+
+#page-loader.is-hidden {
+    opacity: 0;
+}
+
+#page-loader .ring {
+    width: 26px;
+    height: 26px;
+    border: 2px solid var(--main_text_color, #000000);
+    border-top-color: transparent;
+    border-radius: 50%;
+    opacity: .35;
+    animation: loader-spin .7s linear infinite;
+}
+
+@keyframes loader-spin {
+    to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #page-loader .ring { animation: none; opacity: .25; }
+}
+</style>
 </head>
 
 <body>
-	<div id="zyyo-loading">
-		<div id="zyyo-loading-center">
-		</div>
-	</div>
+	<div id="page-loader" aria-hidden="true"><span class="ring"></span></div>
 	<div class="zyyo-filter"></div>
 
 	<div class="zyyo-main">
@@ -274,7 +310,7 @@
 
 	</div>
 </body>
-<script src="./static/js/script.js?v=20260810"></script>
+<script src="./static/js/script.js?v=20260812"></script>
 
 
 
