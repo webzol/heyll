@@ -53,13 +53,14 @@ a:focus {
 }
 
 ::-webkit-scrollbar-track {
-    background-color: var(--main_bg_color, linear-gradient(50deg, #a2d0ff, #ffffff));
+    background-color: var(--page-bg);
 }
 
 
 
 html[data-theme="Dark"] {
-    
+    --page-bg: #0f0f11;
+    --page-bg-image: linear-gradient(135deg, rgba(189, 52, 254, 0.08) 0%, rgba(224, 50, 27, 0.06) 50%, rgba(65, 209, 255, 0.08) 100%);
     --main_text_color: #fff;
     --gradient:linear-gradient(120deg, rgb(133, 62, 255), #f76cc6 30%, rgb(255, 255, 255) 60%);
     --purple_text_color: #747bff;
@@ -87,12 +88,13 @@ body {
     width: 100%;
     position: relative;
     font-family: "b",  "a", sans-serif;
-    background: var(--main_bg_color);
+    background-color: var(--page-bg);
+    background-image: var(--page-bg-image);
     background-repeat: no-repeat;
     background-size: cover;
     background-position: center;
     background-attachment: fixed;
-    transition: color 0.1s ease;
+    transition: background-color 0.25s ease, color 0.25s ease;
     color: var(--main_text_color);
 
 }
