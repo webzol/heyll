@@ -158,11 +158,11 @@ body {
 .logo::before {
     content: '';
     position: absolute;
-    inset: -8%;
+    inset: -2%;
     border-radius: 50%;
     background: var(--gradient);
-    opacity: 0.6;
-    filter: blur(12px);
+    opacity: 0.5;
+    filter: blur(6px);
     z-index: -1;
     animation: avatarBreathing 4s ease-in-out infinite;
 }
@@ -170,11 +170,11 @@ body {
 @keyframes avatarBreathing {
     0%, 100% {
         transform: scale(1);
-        opacity: 0.6;
+        opacity: 0.5;
     }
     50% {
-        transform: scale(1.15);
-        opacity: 0.85;
+        transform: scale(1.05);
+        opacity: 0.75;
     }
 }
 
@@ -305,11 +305,11 @@ body {
 .index-logo::before {
     content: '';
     position: absolute;
-    inset: -8%;
+    inset: -2%;
     border-radius: 50%;
     background: var(--gradient);
-    opacity: 0.6;
-    filter: blur(12px);
+    opacity: 0.5;
+    filter: blur(6px);
     z-index: -1;
     animation: avatarBreathing 4s ease-in-out infinite;
 }
