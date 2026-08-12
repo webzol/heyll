@@ -46,6 +46,7 @@
 - `#page-loader` 的 DOM 节点是**硬编码在 `index.html` 里**的（`<div id="page-loader">` 紧跟 `<body>`），不像旧的 FPS 计数器那样由 JS `createElement` 动态插入。改结构时别漏掉它。
 - JS 逻辑写成 IIFE 且 `if (!loader) return;` 开头，删掉 HTML 节点不会报错。
 - `script.js` 的引用带版本查询串（`?v=20260812`），改完 JS 记得同步 bump，否则浏览器吃旧缓存。
+- **两个 CSS 也已加版本串**（`style.css?v=` / `root.css?v=`）。改 CSS 必须同步 bump——尤其 `root.css` 里写着背景图路径，缓存到旧版会去请求已删除的图片导致 404。
 
 ---
 
