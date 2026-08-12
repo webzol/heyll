@@ -103,6 +103,71 @@ Image.open('src.png').resize((600,600), Image.LANCZOS) \
 
 ---
 
+## 2026.08 · 头像呼吸光圈效果
+
+### 做了什么
+
+为 `.logo`(左侧栏头像) 和 `.index-logo`(移动端头像) 添加呼吸光圈动画，使用 `::before` 伪元素实现。
+
+### 关键决策
+
+1. **复用网站原有渐变配色 `var(--gradient)`**
+   光圈颜色直接取 CSS 变量 `--gradient`(紫红蓝三色渐变)，自动跟随主题切换，无需为每个主题单独适配。夜间模式下渐变会变成 `linear-gradient(120deg, rgb(133, 62, 255), #f76cc6 30%, rgb(255, 255, 255) 60%)`，光圈同步变化。
+
+2. **参数选择**
+   - 周期 **4 秒**：参考 UX 指南避免过快(< 2s 会分散注意力)，又不至于慢到感知不明显。
+   - 缩放 **1.0 → 1.15**：扩张幅度适中，太大(1.3+)会溢出容器、太小(1.05)不明显。
+   - 透明度 **0.6 → 0.85**：基础透明度 0.6 确保不喧宾夺主，呼吸峰值 0.85 提供足够存在感。
+   - 模糊 **12px**：柔化光圈边缘，避免硬边圈感觉廉价。
+   - 定位 **inset: -8%**：光圈比头像略大 8%，视觉上像「从头像向外发光」而非「头像套了个圈」。
+
+3. **无障碍支持 `prefers-reduced-motion`**
+   用户开启系统动效减弱时，光圈动画停止、透明度降至 0.4 变成静态装饰层。这是 UX 指南要求的「Severity: High」项。
+
+4. **性能考量**
+   - 只用 `transform: scale()` 和 `opacity`，这两个属性在合成线程完成，不触发重排/重绘。
+   - `filter: blur(12px)` 会进光栅化，但只有一层伪元素、且尺寸固定(头像 180-200px)，移动端也能稳定 60fps。
+   - `animation: avatarBreathing 4s ease-in-out infinite` 用 `ease-in-out` 缓动函数，在 0% / 50% / 100% 关键帧处速度自然降至零，符合「呼吸」节奏。
+
+### 实现细节
+
+```css
+.logo::before,
+.index-logo::before {
+    content: '';
+    position: absolute;
+    inset: -8%;                    /* 比头像大 8% */
+    border-radius: 50%;
+    background: var(--gradient);   /* 复用站点渐变 */
+    opacity: 0.6;
+    filter: blur(12px);            /* 高斯模糊柔化边缘 */
+    z-index: -1;                   /* 置于头像后方 */
+    animation: avatarBreathing 4s ease-in-out infinite;
+}
+
+@keyframes avatarBreathing {
+    0%, 100% { transform: scale(1);    opacity: 0.6;  }
+    50%      { transform: scale(1.15); opacity: 0.85; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .logo::before,
+    .index-logo::before {
+        animation: none;
+        opacity: 0.4;
+    }
+}
+```
+
+### 坑 / 注意
+
+- **不要用 `box-shadow` 实现**：多层 `box-shadow` 模拟光晕需要 5-8 层渐变阴影，性能远劣于单层 `filter: blur()`。
+- **`z-index: -1` 必须加**：否则光圈会盖住头像本体和外层的 `logokuang.png` 装饰框。
+- **`inset` 简写等价于 `top/right/bottom/left: -8%`**，负值让伪元素溢出父容器边界。
+- **移动端 `.index-logo` 在 `@media (min-width: 800px)` 下 `display: none`**，但样式依然生效无副作用。
+
+---
+
 ## 2026.08 · 移除 FPS 计数器
 
 原模板在左上角用 `requestAnimationFrame` 计帧并 `createElement` 插一个 `div#fps`（样式全内联在 JS 里）。属于调试残留，对访客无意义，整块删除。
