@@ -28,7 +28,7 @@
 
 2. **颜色取主题变量，不写死。**
    遮罩底色 `var(--main_bg_color, #ffffff)`，圆环描边 `var(--main_text_color, #000000)`。两者出自同一份 `root.css`，要么都拿到变量、要么都走 fallback，不会出现「白环叠白底」的失配。
-   注意 `--main_bg_color` 在部分主题里是 `url(../img/background.jpg)`（相对 `root.css` 解析），所以遮罩上保留了 `background-size: cover` / `background-position: center`，否则背景图主题下会平铺。
+   注意 `--main_bg_color` 在部分主题里是 `url(../img/background.webp)`（相对 `root.css` 解析），所以遮罩上保留了 `background-size: cover` / `background-position: center`，否则背景图主题下会平铺。
 
 3. **淡出后从 DOM 移除，不是只置 `opacity: 0`。**
    原实现只把 opacity 改成 0，节点一直留在 body 上（`z-index: 999999`）。虽然有 `pointer-events: none` 兜住点击穿透，但留一个全屏节点在合成树里没必要。现在 `is-hidden` 触发 .35s 过渡，400ms 后 `removeChild`。
@@ -46,6 +46,59 @@
 - `#page-loader` 的 DOM 节点是**硬编码在 `index.html` 里**的（`<div id="page-loader">` 紧跟 `<body>`），不像旧的 FPS 计数器那样由 JS `createElement` 动态插入。改结构时别漏掉它。
 - JS 逻辑写成 IIFE 且 `if (!loader) return;` 开头，删掉 HTML 节点不会报错。
 - `script.js` 的引用带版本查询串（`?v=20260812`），改完 JS 记得同步 bump，否则浏览器吃旧缓存。
+
+---
+
+## 2026.08 · 首屏图片压缩
+
+### 结果
+
+| 文件 | 前 | 后 | 处理 |
+| --- | --- | --- | --- |
+| `logo.png` → `logo.webp` | 1080×1080 / 1176 KB | 600×600 / 46 KB | WebP q82 |
+| `background.jpg` → `background.webp` | 800×480 / 266 KB | 800×480 / 56 KB | WebP q85，尺寸不变 |
+| `logokuang.png` | 800×800 / 162 KB | 600×600 / 23 KB | 128 色量化 PNG（原地替换） |
+
+首屏图片总量 1604 KB → 125 KB，约 −92%。
+
+### 关键决策
+
+1. **尺寸依据实际渲染宽度，不是原图尺寸。**
+   `.zyyo-left` 宽 230px、左右 padding 各 15px → 内容区 200px，`.logo` 取 `width: 90%` = **实际只渲染 180 CSS px**；移动端 `.index-logo` 是 `max-width: 200px`。所以 600px 已能完整覆盖 DPR 3，原来的 1080px 纯属浪费。**以后换图先算这个数，别直接丢原图进来。**
+
+2. **`logo` 的 alpha 通道是纯浪费。**
+   原图是 RGBA，但实测 alpha extrema 为 `(255, 255)`——全不透明。照片类内容 + 无效 alpha 存成 PNG 是 1.2MB 的根本原因。而且它外层有 `border-radius: 50%` 裁圆、上面还盖着 `logokuang` 贴纸，四角根本看不见，转有损格式零风险。
+
+3. **`logokuang` 反而用量化 PNG，不用 WebP。**
+   它是硬边缘卡通贴纸 + 大片透明区。实测：有损 WebP q88 = 27.3 KB（描边有振铃风险）、无损 WebP = 70.5 KB、**128 色量化 PNG = 23.2 KB 且零振铃无色带**。这类平涂插画量化 PNG 通常优于有损格式——别无脑上 WebP。
+   附带好处：保持 `.png` 后缀，无需改任何引用。
+
+4. **改扩展名要同步改引用。**
+   `logo.webp` → `index.html` 两处内联 `background-image`（`.logo` 与 `.index-logo`）。
+   `background.webp` → `static/css/root.css` **三处** `--main_bg_color`（主题 1 / 2 / 5 都用了背景图）。改完务必 `grep -rn "background\.jpg\|logo\.png"` 确认零残留。
+
+### 无需处理的
+
+- **`qq.jpg`（459 KB）、`wxzsm.jpg`（57 KB）**：只出现在 `onclick="pop('...')"` 的字符串里，且元素带 `style="display:none"`。浏览器**不会预加载**，对首屏零成本，仅占仓库体积。想瘦仓库可删，但删了对应入口就彻底没法恢复。
+- **`i5.png` / `i6.png`（共 24 KB）**：全仓库零引用，是备用的 project 图标，同样不影响加载。
+- **`tz.jpg`**：`script.js:172` 引用了它但那行是注释（`//pop(...)`），文件本身不存在也不会 404。
+- **`favicon.ico`（1023×1023 / 56 KB）**：尺寸离谱但体积可接受，且被当头像复用，暂不动。
+
+### 复现方法
+
+本机有 Python 3.14 + Pillow，无需装额外工具：
+
+```python
+from PIL import Image
+# 照片类 → WebP
+Image.open('src.png').convert('RGB').resize((600,600), Image.LANCZOS) \
+     .save('out.webp','WEBP',quality=82,method=6)
+# 平涂插画带透明 → 量化 PNG
+Image.open('src.png').resize((600,600), Image.LANCZOS) \
+     .quantize(colors=128, method=Image.FASTOCTREE).save('out.png','PNG',optimize=True)
+```
+
+原图不必另存备份——旧版本都在 git 历史里（压缩前提交为 `5563239`）。
 
 ---
 

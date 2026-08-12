@@ -57,6 +57,7 @@ docker compose up -d
 - 更新 GitHub 链接，隐藏邮箱 / 赞助 / QQ 入口
 - 移除左上角 FPS 计数器
 - 首屏加载动画换成轻量方案：原 150px 蓝色缩放圆球改为 26px 细圆环，关键样式内联、跟随主题变量取色，加载完成后淡出并从 DOM 移除
+- 首屏图片压缩：`logo` 1176→46 KB、`background` 266→56 KB（均转 WebP），`logokuang` 162→23 KB（量化 PNG），首屏图片总量减少约 92%
 - 页脚年份改为自动取当前年份
 - 更换 logo，主题变量与 project 区块样式微调
 
