@@ -173,3 +173,121 @@ Image.open('src.png').resize((600,600), Image.LANCZOS) \
 原模板在左上角用 `requestAnimationFrame` 计帧并 `createElement` 插一个 `div#fps`（样式全内联在 JS 里）。属于调试残留，对访客无意义，整块删除。
 
 `static/js/script.js` 里保留了一行 `// FPS 计数器已移除（原左上角 FPS 显示）` 作为说明，`README.md` 更新日志里也留了一条记录——这两处是刻意留的文字痕迹，不影响运行。CSS 和 HTML 里本来就没有对应节点，无需清理。
+## 2026.08 · 背景系统重构(双层架构)
+
+### 做了什么
+
+将单一 `--main_bg_color` 拆分为 `--page-bg`(底色) + `--page-bg-image`(柔光渐变层)，参考 OneDong 主题的设计模式。
+
+### 关键决策
+
+1. **双层架构理念**
+   ```css
+   body {
+     background-color: var(--page-bg);        /* 底色 */
+     background-image: var(--page-bg-image);  /* 柔光层 */
+     background-repeat: no-repeat;            /* radial 不平铺 */
+     background-attachment: fixed;            /* 钉视口 */
+   }
+   ```
+   - `--page-bg` 是实色底或图片(纯色 `#F9FAFF` / 渐变 `linear-gradient` / 图片 `url()`)
+   - `--page-bg-image` 是透明渐变层(通常 `radial-gradient` 柔光圆 / `linear-gradient` 氛围层)
+   - 两者叠加产生细腻的视觉层次,避免单一纯色的单调感
+
+2. **主题4 柔光渐变参数**
+   ```css
+   --page-bg: #F9FAFF;  /* 底色:极浅紫蓝(比纯白 #fff 多一丝冷调) */
+   --page-bg-image: 
+     radial-gradient(circle at 20% 30%, rgba(255, 223, 186, 0.15) 0%, transparent 45%),
+     radial-gradient(circle at 80% 70%, rgba(173, 216, 230, 0.12) 0%, transparent 50%);
+   ```
+   - **暖黄光圈**(左上 20%,30%): `rgba(255, 223, 186, 0.15)` = #FFDFBA @ 15% 透明度,45% 衰减至透明
+   - **浅蓝光圈**(右下 80%,70%): `rgba(173, 216, 230, 0.12)` = #ADD8E6 @ 12% 透明度,50% 衰减
+   - 两圆错位叠加,产生温暖而不刺眼的渐变氛围
+   - 透明度 12-15% 确保柔和,不抢卡片/文字的视觉主导权
+
+3. **夜间模式氛围层**
+   ```css
+   html[data-theme="Dark"] {
+     --page-bg: #0f0f11;  /* 底色:接近全黑(Lightness 6%) */
+     --page-bg-image: linear-gradient(135deg, 
+       rgba(189, 52, 254, 0.08) 0%,    /* 紫 #bd34fe */
+       rgba(224, 50, 27, 0.06) 50%,    /* 红 #e0321b */
+       rgba(65, 209, 255, 0.08) 100%   /* 蓝 #41d1ff */
+     );
+   }
+   ```
+   - 复用网站 `--gradient` 的三色(紫红蓝),但降至 6-8% 极低透明度
+   - `135deg` 对角线走向,暗示方向感而不显刺眼
+   - 避免夜间模式纯黑死板,增加微妙的色彩呼吸感
+
+4. **`background-attachment: fixed` 的取舍**
+   - 优点:长页面滚动时背景钉在视口,柔光圆位置不变,避免渐变被拉伸变形
+   - 代价:iOS Safari 对 `fixed` + `radial-gradient` 渲染有已知 bug(某些版本会闪烁或不生效)
+   - 决策:**先保留 `fixed`**,待 TD 移动端实测;若 iOS 异常,则媒体查询 `@media (max-width: 800px)` 改 `scroll`
+
+5. **变量命名语义化**
+   - `--page-bg` 而非 `--main-bg-color`:因为它不只是颜色,可能是 `url()` 图片
+   - `--page-bg-image`:明确其为 `background-image` 属性值,可以是 `none` / `radial-gradient` / `linear-gradient`
+   - 旧的 `--main_bg_color` 在 `root.css` 中全部替换,`style.css` 的 `body` 规则同步改写
+
+### 实现细节
+
+**主题变量拆分前后对比**
+```css
+/* 旧(v6.2.1 前) */
+--main_bg_color: #ffffff;  /* 单一变量承载一切 */
+body { background: var(--main_bg_color); }
+
+/* 新(v6.3.0) */
+--page-bg: #F9FAFF;
+--page-bg-image: radial-gradient(...);
+body {
+  background-color: var(--page-bg);
+  background-image: var(--page-bg-image);
+}
+```
+
+**5 套主题适配情况**
+| 主题 | `--page-bg` | `--page-bg-image` | 说明 |
+|------|-------------|-------------------|------|
+| 主题1 | `url(background.webp)` | `none` | 图片模糊背景,无需渐变层 |
+| 主题2 | `url(background.webp)` | `none` | 同上 |
+| 主题3 | `linear-gradient(50deg, #a2d1ff, #ffffff)` | `none` | 本身是渐变底,无需叠加 |
+| 主题4 | `#F9FAFF` | 暖黄+浅蓝双圆 | **新增柔光层** |
+| 主题5 | `url(background.webp)` | `none` | 图片模糊背景 |
+| Dark | `#0f0f11` | 紫红蓝线性渐变 8%/6%/8% | **新增氛围层** |
+
+**首屏加载层同步适配**
+```html
+<!-- index.html 内联样式 -->
+<style>
+#page-loader {
+  background-color: var(--page-bg, #F9FAFF);
+  background-image: var(--page-bg-image, none);
+  /* fallback 值保证变量未加载时不白屏 */
+}
+</style>
+```
+- 加载层必须在第一帧就匹配主题背景,所以同步使用双变量
+- fallback 值取主题4(默认主题),确保冷启动时视觉连贯
+
+### 坑 / 注意
+
+- **iOS Safari `fixed` + `radial-gradient` 风险**:已知 iOS 14-15 某些版本渲染异常,实测后若闪烁需降级为 `scroll`
+- **柔光圆透明度上限 20%**:超过 20% 会在卡片下形成色斑,破坏玻璃态/卡片的通透感
+- **`background-repeat: no-repeat` 必须加**:否则 `radial-gradient` 会平铺成网格,视觉灾难
+- **主题切换时 `transition` 只管 `background-color`**:`background-image` 的渐变无法平滑过渡(CSS 限制),但 0.25s 的底色过渡已足够柔和
+- **滚动条轨道 `::webkit-scrollbar-track` 也要改**:从 `var(--main_bg_color)` 改为 `var(--page-bg)`,否则滚动条底色失配
+
+### 性能
+
+- 纯 CSS `radial-gradient`,零 JS 开销,GPU 合成友好
+- 两层 `radial-gradient` 叠加对移动端无压力(现代浏览器优化良好)
+- `background-attachment: fixed` 在桌面端零成本,移动端有轻微重绘(可接受)
+
+### 后续扩展方向
+
+- 可为每个主题单独调参(柔光圆位置/颜色/透明度/衰减半径)
+- 可增加 `background-blend-mode: soft-light` 进一步柔化(实测后决定是否需要)
+- 可增加 SVG noise 纹理叠加(参考 ui-ux-pro-max 的 Vintage Analog 风格),但需控制 `opacity` < 3% 避免颗粒感过重
