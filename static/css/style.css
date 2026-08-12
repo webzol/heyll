@@ -158,23 +158,26 @@ body {
 .logo::before {
     content: '';
     position: absolute;
-    inset: -2%;
+    inset: -3px;
     border-radius: 50%;
     background: var(--gradient);
-    opacity: 0.5;
-    filter: blur(6px);
+    padding: 2px;
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0.7;
     z-index: -1;
     animation: avatarBreathing 4s ease-in-out infinite;
 }
 
 @keyframes avatarBreathing {
     0%, 100% {
+        opacity: 0.6;
         transform: scale(1);
-        opacity: 0.5;
     }
     50% {
-        transform: scale(1.05);
-        opacity: 0.75;
+        opacity: 0.9;
+        transform: scale(1.02);
     }
 }
 
@@ -305,11 +308,14 @@ body {
 .index-logo::before {
     content: '';
     position: absolute;
-    inset: -2%;
+    inset: -3px;
     border-radius: 50%;
     background: var(--gradient);
-    opacity: 0.5;
-    filter: blur(6px);
+    padding: 2px;
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0.7;
     z-index: -1;
     animation: avatarBreathing 4s ease-in-out infinite;
 }
