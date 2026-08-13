@@ -9,14 +9,14 @@
 @font-face {
     font-family: "b";
 
-    src: url(../fonts/Ubuntu-Regular.ttf);
+    src: url(../fonts/Ubuntu-Regular.woff2) format("woff2");
     font-display: swap;
 }
 
 @font-face {
     font-family: "title";
     /*英文字体*/
-    src: url(../fonts/Pacifico-Regular.ttf);
+    src: url(../fonts/Pacifico-Regular.woff2) format("woff2");
     font-display: swap;
 }
 
@@ -519,16 +519,65 @@ body {
     padding: 15px;
     height: 100px;
     width: calc(25% - 15px);
+    position: relative;
     backdrop-filter: blur(var(--card_filter));-webkit-backdrop-filter: blur(var(--card_filter));
     transition: opacity 0.5s ease, background-color 0.2s ease, border 0.2s ease, transform 0.3s ease;
+    overflow: hidden;
+    isolation: isolate;
 
 }
 
+/* 流光边框：conic-gradient 光带 + mask 镂空中心，hover 时旋转并淡入。
+   颜色取站点背景柔光渐变层(暖黄 #FFEBA3 + 天蓝 #ADD8FF)并混入主色，
+   旋转中的右图/标题会被压在边框之下，避免遮挡边框 */
+.projectItem::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1.5px;
+    background: conic-gradient(
+        from var(--flow-angle, 0deg),
+        rgba(255, 235, 163, 0.9) 0%,
+        rgba(173, 216, 255, 0.9) 16%,
+        rgba(189, 52, 254, 0.75) 32%,
+        rgba(65, 209, 255, 0.75) 48%,
+        rgba(255, 181, 71, 0.85) 64%,
+        rgba(255, 235, 163, 0.9) 80%,
+        rgba(173, 216, 255, 0.9) 100%
+    );
+    -webkit-mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 0.35s ease;
+    pointer-events: none;
+    z-index: 2;
+    animation: project-flow 4s linear infinite;
+}
 
-.projectItem:hover {
-    box-shadow: 0 8px 16px -4px #2c2d300c;
-    transform: translateY(-2px);
+@property --flow-angle {
+    syntax: "<angle>";
+    initial-value: 0deg;
+    inherits: false;
+}
 
+@keyframes project-flow {
+    to { --flow-angle: 360deg; }
+}
+
+.projectItem:hover::before {
+    opacity: 1;
+}
+
+.projectItem > * {
+    position: relative;
+    z-index: 1;
 }
 
 .projectItem.pressed {
@@ -539,10 +588,12 @@ body {
 
 .projectItem:hover .projectItemLeft {
     width: 100%;
+    z-index: 1;
 }
 
 .projectItem:hover .projectItemRight {
     width: 0%;
+    z-index: 1;
 }
 
 .projectItem:hover .projectItemRight img {
